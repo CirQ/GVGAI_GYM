@@ -1,6 +1,6 @@
 from random import randint
 
-class Agent():
+class Agent(object):
 
     def __init__(self):
         self.name = "randomAgent"

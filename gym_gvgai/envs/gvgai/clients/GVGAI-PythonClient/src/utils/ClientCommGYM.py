@@ -24,7 +24,12 @@ class ClientCommGYM:
     """
 
     def __init__(self, game, version, lvl, pathStr):
-        self.tempDir = tempfile.TemporaryDirectory()
+        import collections
+        if not os.path.isdir('tmp'):
+            os.mkdir('tmp')
+        Name = collections.namedtuple('Name', ['name'])
+        self.tempDir = Name('tmp')
+        # self.tempDir = tempfile.TemporaryDirectory()
         self.addLevel('')   #Level template to be loaded into java
 
         self.TOKEN_SEP = '#'
