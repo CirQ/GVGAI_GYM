@@ -18,3 +18,5 @@ for t in range(2000):
     # break loop when terminal state is reached
     if done:
         break
+    # (new) for debugging visibility
+    env.render()
