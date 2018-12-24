@@ -7,13 +7,14 @@ env = gym_gvgai.make('gvgai-aai-lvl0-v0')
 
 epsilon = 1.0
 MAX_EPISODE = 10000
+MAX_STEP = 1000
 
 for r in range(MAX_EPISODE):
-    epsilon *= 0.9995   # minmum is 0.006729527022146667
+    epsilon *= 0.99
     agent = Agent.Agent(epsilon, reuse=True)
-    stateObs = env.reset()
+    env.reset()
     actions = env.env.GVGAI.actions()
-    for t in range(1000):
+    for t in range(MAX_STEP):
         done, debug = agent.train_act(env, actions)
         if done:
             break

@@ -1,4 +1,3 @@
-from collections import namedtuple
 from enum import IntEnum
 from itertools import product
 import pickle
@@ -6,7 +5,7 @@ import random
 
 import numpy as np
 
-KeyType = str
+KeyType = int
 
 class Sprite(IntEnum):
     Background = 154
@@ -71,7 +70,7 @@ class QTable(object):       # a Q table
         self.table[key[0]][key[1]] = value  # set specific item, e.g., table[233, USE] = 1
 
     def __delitem__(self, key):
-        if not isinstance(key, int):    # delete a state, to reduce size, e.g., del table[233]
+        if not isinstance(key, int):        # delete a state, to reduce size, e.g., del table[233]
             raise QTableError('invalid state hash to delete: '+str(key))
         if key not in self.table:
             raise QTableError('no such state hash: '+str(key))
@@ -81,10 +80,11 @@ class QTable(object):       # a Q table
 
 
 class Agent(object):
-    def __init__(self, epsilon, alpha=0.1, gamma=0.9, reuse=False):
+    def __init__(self, epsilon=None, alpha=0.9, gamma=0.7, reuse=True, with_gui=False):
         self.name = 'Agent11849180'
-        self.model_name = 'str_cubic_exp'
+        self.model_name = 'int_reward_inc'
         self.Qtable = self._load_Qtable(reuse)
+        self.with_gui = with_gui
         # for game map
         self.gamegrid = (9, 10)
         self.factor = 10
@@ -124,35 +124,42 @@ class Agent(object):
         return H
 
     def hashing(self, gamemap):         # for state compress
-        # return self._rolling_hash(self._convolution(gamemap))
-        return str(self._convolution(gamemap))
+        if KeyType == int:
+            return self._rolling_hash(self._convolution(gamemap))
+        if KeyType == str:
+            return str(self._convolution(gamemap))
+        raise QTableError('unknown key type: '+str(KeyType))
 
     def get_next_action(self, state):       # epsilon-greedy strategy
         if random.random() > self.epsilon:  # do exploitation
-            return self.Qtable[state].argmax()
+            return self.Qtable[state].argmax() or 1     # prefer shooting
         else:                               # do exploration
             return Action.random_action()
 
-    def update_Qtable(self, state0, act, state1, reward):
-        reward **= 3
+    reward_inc = lambda s: (s+1)**3 if s>0 else s*10
+
+    def update_Qtable(self, state0, act, state1, reward):   # Q learning update strategy
+        reward = Agent.reward_inc(reward)
         currentQ = self.Qtable[state0, act]
         deltaQ = reward + self.gamma * self.Qtable[state1].max() - currentQ
         self.Qtable[state0, act] = currentQ + self.alpha * deltaQ
 
 
     def train_act(self, env, actions):
-        this_state = self.hashing(env.env.img)
-        action = self.get_next_action(this_state)
-        stateObs, increScore, done, debug = env.step(action)
-        new_state = self.hashing(stateObs)
-        env.render()
-        self.total_score += increScore
-        self.update_Qtable(this_state, action, new_state, increScore)
-        if done:
+        this_state = self.hashing(env.env.img)                          # record this state
+        action = self.get_next_action(this_state)                       # get new action
+        stateObs, increScore, done, debug = env.step(action)            # one-step forward
+        new_state = self.hashing(stateObs)                              # record new state
+        self.update_Qtable(this_state, action, new_state, increScore)   # update q table
+
+        self.total_score += increScore              # debuging message
+        if self.with_gui:
+            env.render()
+        if done:                                    # game is over, output score
             print('Score is:', self.total_score)
             self._dump_Qtable()
         return done, debug
 
     def act(self, stateObs, actions):
-        action_id = random.randint(0,len(actions)-1)
-        return action_id
+        state = self.hashing(stateObs)
+        return self.Qtable[state].argmax()
