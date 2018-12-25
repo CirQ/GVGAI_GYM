@@ -10,8 +10,8 @@ MAX_EPISODE = 10000
 MAX_STEP = 1000
 
 for r in range(MAX_EPISODE):
-    epsilon *= 0.99
-    agent = Agent.Agent(epsilon, reuse=True)
+    epsilon = 0.1
+    agent = Agent.Agent(epsilon, reuse=False)
     env.reset()
     actions = env.env.GVGAI.actions()
     for t in range(MAX_STEP):

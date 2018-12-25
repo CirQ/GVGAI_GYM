@@ -1,3 +1,4 @@
+from collections import namedtuple
 from enum import IntEnum
 from itertools import product
 import pickle
@@ -5,15 +6,19 @@ import random
 
 import numpy as np
 
-KeyType = int
+KeyType = str
 
 class Sprite(IntEnum):
-    Background = 154
-    Base = 8114
-    Avatar = 15895
-    Sam = 1012
-    Bomb = 5356
-    Alien = 11526
+    Background = 59
+    Base = 162
+    Avatar = 61
+    Sam = 134
+    Bomb = 133 # 112 75
+    Alien = 24
+    # below is combined pictures
+    Bomb_a = 112
+    Bomb_b = 75
+    Alien_Bomb = 19
 
 class Action(IntEnum):  # assign names to action id
     NIL = 0
@@ -24,6 +29,7 @@ class Action(IntEnum):  # assign names to action id
     @classmethod
     def random_action(cls): # randomly choose an action
         all_choices = [
+            cls.NIL,
             cls.USE,
             cls.LEFT,
             cls.RIGHT ]
@@ -80,11 +86,10 @@ class QTable(object):       # a Q table
 
 
 class Agent(object):
-    def __init__(self, epsilon=None, alpha=0.9, gamma=0.7, reuse=True, with_gui=False):
+    def __init__(self, epsilon=None, alpha=0.9, gamma=1.0, reuse=True):
         self.name = 'Agent11849180'
-        self.model_name = 'int_reward_inc'
+        self.model_name = 'str_single_channel'
         self.Qtable = self._load_Qtable(reuse)
-        self.with_gui = with_gui
         # for game map
         self.gamegrid = (9, 10)
         self.factor = 10
@@ -96,6 +101,7 @@ class Agent(object):
         self.gamma = gamma
         self.epsilon = epsilon
         self.total_score = 0
+        self.ZERO = np.zeros((self.gamegrid[0],1), dtype=np.uint8)
 
     def _load_Qtable(self, reuse):      # load an existing model
         if reuse:
@@ -108,12 +114,27 @@ class Agent(object):
         with open(self.model_name+'.pickle', 'wb') as w:
             pickle.dump(self.Qtable, w)
 
+    Position = namedtuple('Position', ['r', 'c'])
+
+    def _constrain_map(self, gamemap):
+        conv = self._convolution(gamemap)
+        conv = np.concatenate([self.ZERO, conv, self.ZERO], axis=1)
+        avatar_position = np.where(conv==Sprite.Avatar)
+        try:
+            ar = avatar_position[0][0]
+            ac = avatar_position[1][0]
+            self.last_pos = Agent.Position(ar, ac)
+        except IndexError:
+            pass
+        return conv[self.last_pos.r-4:,self.last_pos.c-1:self.last_pos.c+2]
+
     def _convolution(self, gamemap):    # perform a convolution on the game map
         # kernal = np.ones(shape=(self.factor, self.factor, 3), dtype=np.uint16)
-        conv = np.zeros(shape=self.gamegrid, dtype=np.uint16)
+        conv = np.zeros(shape=self.gamegrid, dtype=np.uint8)
         height, width = self.gamegrid
+        gamemap = gamemap[:,:,0]
         for i, j in product(range(height), range(width)):
-            area = gamemap[i*self.factor:(i+1)*self.factor,j*self.factor:(j+1)*self.factor,:3]
+            area = gamemap[i*self.factor:(i+1)*self.factor,j*self.factor:(j+1)*self.factor]
             conv[i,j] = np.sum(area)    # equivalent to all kernal elements are 1s
         return conv
 
@@ -124,19 +145,20 @@ class Agent(object):
         return H
 
     def hashing(self, gamemap):         # for state compress
+        reduce_map = self._constrain_map(gamemap)
         if KeyType == int:
-            return self._rolling_hash(self._convolution(gamemap))
+            return self._rolling_hash(reduce_map)
         if KeyType == str:
-            return str(self._convolution(gamemap))
+            return str(reduce_map)
         raise QTableError('unknown key type: '+str(KeyType))
 
     def get_next_action(self, state):       # epsilon-greedy strategy
         if random.random() > self.epsilon:  # do exploitation
-            return self.Qtable[state].argmax() or 1     # prefer shooting
+            return self.Qtable[state].argmax()
         else:                               # do exploration
             return Action.random_action()
 
-    reward_inc = lambda s: (s+1)**3 if s>0 else s*10
+    reward_inc = lambda s: (s+1)**3 if s>0 else s*100
 
     def update_Qtable(self, state0, act, state1, reward):   # Q learning update strategy
         reward = Agent.reward_inc(reward)
@@ -153,8 +175,6 @@ class Agent(object):
         self.update_Qtable(this_state, action, new_state, increScore)   # update q table
 
         self.total_score += increScore              # debuging message
-        if self.with_gui:
-            env.render()
         if done:                                    # game is over, output score
             print('Score is:', self.total_score)
             self._dump_Qtable()
