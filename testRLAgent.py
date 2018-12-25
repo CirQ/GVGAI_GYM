@@ -9,7 +9,8 @@ print('Starting ' + env.env.game + " with Level " + str(env.env.lvl))
 # reset environment
 stateObs = env.reset()
 actions = env.env.GVGAI.actions()
-for t in range(2000):
+total_score = 0
+for t in range(1000):
     # choose action based on trained policy
     action_id = agent.act(stateObs, actions)
     # do action and get new state and its reward
@@ -18,5 +19,9 @@ for t in range(2000):
     # break loop when terminal state is reached
     if done:
         break
+    # (new) accumulate player score
+    total_score += increScore
     # (new) for debugging visibility
     env.render()
+# (new) print total score
+print("Score:", total_score)
