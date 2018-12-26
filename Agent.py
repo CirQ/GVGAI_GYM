@@ -170,7 +170,7 @@ class Agent(object):
         else:                               # do exploration
             return Action.random_action()
 
-    reward_inc = lambda s: (s+1)*10 if s>0 else s*100
+    reward_inc = lambda s: s*10 if s>0 else s*100
 
     def update_Qtable(self, state0, act, state1, reward):   # Q learning update strategy
         reward = Agent.reward_inc(reward)

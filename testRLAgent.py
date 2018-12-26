@@ -4,7 +4,7 @@ import gym_gvgai
 import Agent as Agent
 
 env = gym_gvgai.make('gvgai-aai-lvl0-v0')
-agent = Agent.Agent('str_bool_991')
+agent = Agent.Agent('awesome/str_e-6level_reward_awesome')
 print('Starting ' + env.env.game + " with Level " + str(env.env.lvl))
 # reset environment
 stateObs = env.reset()
