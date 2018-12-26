@@ -86,9 +86,9 @@ class QTable(object):       # a Q table
 
 
 class Agent(object):
-    def __init__(self, epsilon=None, alpha=0.9, gamma=1.0, reuse=True):
+    def __init__(self, model_name, epsilon=None, alpha=0.9, gamma=0.9, reuse=True):
         self.name = 'Agent11849180'
-        self.model_name = 'str_single_channel'
+        self.model_name = model_name
         self.Qtable = self._load_Qtable(reuse)
         # for game map
         self.gamegrid = (9, 10)
@@ -126,7 +126,9 @@ class Agent(object):
             self.last_pos = Agent.Position(ar, ac)
         except IndexError:
             pass
-        return conv[self.last_pos.r-4:,self.last_pos.c-1:self.last_pos.c+2]
+        row_select = slice(self.last_pos.r-4, None, 1)
+        column_select = slice(self.last_pos.c-1, self.last_pos.c+2)
+        return conv[row_select, column_select]
 
     def _convolution(self, gamemap):    # perform a convolution on the game map
         # kernal = np.ones(shape=(self.factor, self.factor, 3), dtype=np.uint16)
@@ -144,12 +146,22 @@ class Agent(object):
             H += (self.rolling_a*H + c) % self.rolling_N
         return H
 
+    Target = [
+        Sprite.Base,
+        Sprite.Alien,
+        Sprite.Bomb,
+        Sprite.Bomb_a,
+        Sprite.Bomb_b,
+        Sprite.Alien_Bomb,
+    ]
+
     def hashing(self, gamemap):         # for state compress
         reduce_map = self._constrain_map(gamemap)
+        binary_map = np.isin(reduce_map, Agent.Target).astype(np.uint8)
         if KeyType == int:
             return self._rolling_hash(reduce_map)
         if KeyType == str:
-            return str(reduce_map)
+            return str(tuple(map(tuple, binary_map)))
         raise QTableError('unknown key type: '+str(KeyType))
 
     def get_next_action(self, state):       # epsilon-greedy strategy
@@ -158,7 +170,7 @@ class Agent(object):
         else:                               # do exploration
             return Action.random_action()
 
-    reward_inc = lambda s: (s+1)**3 if s>0 else s*100
+    reward_inc = lambda s: (s+1)*10 if s>0 else s*100
 
     def update_Qtable(self, state0, act, state1, reward):   # Q learning update strategy
         reward = Agent.reward_inc(reward)
@@ -172,6 +184,7 @@ class Agent(object):
         action = self.get_next_action(this_state)                       # get new action
         stateObs, increScore, done, debug = env.step(action)            # one-step forward
         new_state = self.hashing(stateObs)                              # record new state
+        env.render()
         self.update_Qtable(this_state, action, new_state, increScore)   # update q table
 
         self.total_score += increScore              # debuging message
