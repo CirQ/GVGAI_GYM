@@ -184,14 +184,12 @@ class Agent(object):
         action = self.get_next_action(this_state)                       # get new action
         stateObs, increScore, done, debug = env.step(action)            # one-step forward
         new_state = self.hashing(stateObs)                              # record new state
-        env.render()
         self.update_Qtable(this_state, action, new_state, increScore)   # update q table
 
         self.total_score += increScore              # debuging message
         if done:                                    # game is over, output score
-            print('Score is:', self.total_score)
             self._dump_Qtable()
-        return done, debug
+        return done, debug, self.total_score
 
     def act(self, stateObs, actions):
         state = self.hashing(stateObs)
